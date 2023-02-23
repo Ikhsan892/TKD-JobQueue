@@ -52,9 +52,8 @@ func (questioner *QuestionerPostgreAdapter) GetAnswers(projectId, templateId uin
 		Select(`
 			concat(
 				(case 
-					when answered.answer_value = 1 then 'Ya'
 					when answered.answer_value = 2 then ''
-					when answered.answer_value = 0 then 'Tidak'
+					else answered.answer_label 
 				 end
 				),
 				(
