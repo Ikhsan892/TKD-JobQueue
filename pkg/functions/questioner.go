@@ -70,7 +70,6 @@ func (q *Questioner) terminate(delivery rmq.Delivery) {
 		errReject := delivery.Reject()
 		if errReject != nil {
 			utils.Error(q.processName, errReject)
-			panic(errReject)
 		}
 	}
 }
@@ -215,8 +214,9 @@ func (q *Questioner) error(err error) {
 	errReject := q.delivery.Reject()
 	if errReject != nil {
 		utils.Error(q.processName, "Error rejecting queue", errReject)
-		panic(errReject)
 	}
+
+	defer utils.Info(q.processName, "Job Aborted")
 }
 
 func (q *Questioner) isQuestionAndTemplateEmpty(questions []entity.GetQuestion, templates []entity.GetTemplate) bool {
