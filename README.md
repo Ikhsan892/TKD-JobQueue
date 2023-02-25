@@ -1,4 +1,4 @@
-# Sinotif Job Queue
+# TKD Job Queue
 
 [//]: # (<!--- These are examples. See https://shields.io for others or to customize this set of shields. You might want to include dependencies, project status and licence info here --->)
 
@@ -22,7 +22,7 @@ Before you begin, ensure you have met the following requirements:
 * You have a `<Windows/Linux/Mac>` machine.
 * You have installed the latest version of `redis`
 
-## Using Sinotif Job Queue
+## Using TKD Job Queue
 
 To use this tools, follow these steps:
 
@@ -34,11 +34,11 @@ To use this tools, follow these steps:
     ```
 
 
-## Contributing to Sinotif Job Queue
+## Contributing to TKD Job Queue
 
 To contribute, follow these steps:
 
-1. Contact Muhammad Fatihul Ikhsan a.k.a Tiul.
+1. Contact Muhammad Fatihul Ikhsan.
 
 
 ## Contributors
