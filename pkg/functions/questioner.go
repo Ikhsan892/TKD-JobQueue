@@ -50,12 +50,14 @@ func NewQuestioner(report *Questioner) *Questioner {
 var (
 	additionalHeaders = []entity.GetQuestion{
 		{
-			Id:   1,
-			Name: "No",
+			Id:        1,
+			ProjectId: 0,
+			Name:      "No",
 		},
 		{
-			Id:   2,
-			Name: "Unit Kerja",
+			Id:        2,
+			ProjectId: 0,
+			Name:      "Unit Kerja",
 		},
 	}
 	headerStartRow = 2
@@ -135,6 +137,10 @@ func (q *Questioner) baseStyle(templateName, column, color string, bold bool) {
 		Font: &excelize.Font{
 			Bold: bold,
 		},
+		Alignment: &excelize.Alignment{
+			Vertical: "center",
+			WrapText: true,
+		},
 	})
 	q.excel.SetCellStyle(templateName, column, column, colHeaderStyle)
 }
@@ -173,6 +179,8 @@ func (q *Questioner) setHeader(payload dto.PayloadQuestioner, wg *sync.WaitGroup
 		questions := questionerRepo.GetAllQuestion(payload.ProjectId, template.Id)
 		questions = append(additionalHeaders, questions...)
 
+		utils.Debug(q.processName, "template : ", template.Name, " , total_questions : ", len(questions))
+
 		if q.isQuestionAndTemplateEmpty(questions, templateQuestions) {
 			q.error(errors.New("questions Empty && template Empty"))
 		}
@@ -195,6 +203,8 @@ func (q *Questioner) setHeader(payload dto.PayloadQuestioner, wg *sync.WaitGroup
 				break
 			}
 		}
+
+		questions = []entity.GetQuestion{}
 	})
 
 	wg.Done()

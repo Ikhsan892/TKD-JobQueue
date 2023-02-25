@@ -2,7 +2,9 @@ package postgresql
 
 import (
 	"assessment/pkg/entity"
+	"fmt"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type QuestionerPostgreAdapter struct {
@@ -18,11 +20,20 @@ func NewQuestionerAdapter(db *gorm.DB) *QuestionerPostgreAdapter {
 func (questioner *QuestionerPostgreAdapter) GetAllQuestion(projectId, templateId uint) []entity.GetQuestion {
 	var result []entity.GetQuestion
 
-	questioner.db.Table("project_questioners").
-		Where("project_id", projectId).
-		Where("template_id", templateId).
-		Order("id asc").
-		Select("distinct id,name").Find(&result)
+	questioner.db.Table(fmt.Sprintf(`
+		(
+		  select id,project_id,name
+		  from project_questioners
+		WHERE 
+		  "project_id" = %d 
+		  AND "template_id" = %d 
+		  AND deleted_at is null
+		order by id asc
+		limit (select count(*) from questions where template_id = %d)
+		) as q
+		`, projectId, templateId, templateId)).
+		Select("q.id,q.name,q.project_id").
+		Find(&result)
 
 	return result
 }
@@ -79,7 +90,15 @@ func (questioner *QuestionerPostgreAdapter) GetAnswers(projectId, templateId uin
 
 	var s []string
 	for _, r := range result {
-		s = append(s, r.Answer)
+		if r.Answer != " ; : " {
+			answerString := ""
+			for _, answer := range strings.Split(r.Answer, ";") {
+				answerString += fmt.Sprintf("- %s \n", answer)
+			}
+			s = append(s, answerString)
+		} else {
+			s = append(s, r.Answer)
+		}
 	}
 
 	return s

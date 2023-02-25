@@ -1,8 +1,9 @@
 package entity
 
 type GetQuestion struct {
-	Id   uint
-	Name string
+	Id        uint   `json:"project_id"`
+	Name      string `json:"name"`
+	ProjectId uint   `json:"project_id"`
 }
 
 type GetUnitKerja struct {
