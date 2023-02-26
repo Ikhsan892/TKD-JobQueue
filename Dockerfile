@@ -32,6 +32,6 @@ ENV DB_PORT=5431
 
 WORKDIR /app
 RUN mkdir -p /app/assets/report
-COPY --from=binary-builder --chown=nonroot:nonroot /builder/tkd /app
+COPY --from=binary-builder --chown=root:root /builder/tkd /app
 ENTRYPOINT ["/app/tkd"]
 
