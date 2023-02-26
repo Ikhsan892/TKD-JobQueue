@@ -21,13 +21,14 @@ type IJobQueueLog interface {
 }
 
 type JobQueueLog struct {
-	db      *gorm.DB
-	payload *LogInfo
+	db *gorm.DB
+	id uint
 }
 
 func NewJobQueueLog(db *gorm.DB) *JobQueueLog {
 	return &JobQueueLog{
 		db: db,
+		id: 0,
 	}
 }
 
@@ -40,12 +41,14 @@ func (jobQueue *JobQueueLog) CreateJobQueueLog(data LogInfo) {
 	} else {
 		tx.Commit()
 	}
+
+	jobQueue.id = data.ID
 }
 
 // UpdateJobQueueLog update log process
 func (jobQueue *JobQueueLog) UpdateJobQueueLog(data LogInfo) {
 	tx := jobQueue.db.Begin()
-	if errUpdate := tx.Table(os.Getenv("TABLE_LOG")).Where("id = ?", data.ID).Updates(&data).Error; errUpdate != nil {
+	if errUpdate := tx.Table(os.Getenv("TABLE_LOG")).Where("id = ?", jobQueue.id).Updates(&data).Error; errUpdate != nil {
 		Error("CREATE_TABLE_LOG_PROCESS", errUpdate)
 		tx.Rollback()
 	}

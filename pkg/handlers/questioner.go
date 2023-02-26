@@ -4,6 +4,7 @@ import (
 	"assessment/configs"
 	"assessment/pkg/adapter/postgresql"
 	"assessment/pkg/functions"
+	"assessment/pkg/utils"
 	"fmt"
 	"github.com/adjust/rmq/v5"
 	"gorm.io/gorm"
@@ -17,7 +18,7 @@ func HandlerQuestioner(queue rmq.Queue, db *gorm.DB, cfg *configs.Config) {
 			WorkerIndex:    i,
 			Config:         cfg,
 			QuestionerRepo: postgresql.NewQuestionerAdapter(db),
-			LogProcess:     nil,
+			LogProcess:     utils.NewJobQueueLog(db),
 		})); err != nil {
 			panic(err)
 		}

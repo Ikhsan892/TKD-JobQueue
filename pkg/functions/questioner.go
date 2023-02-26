@@ -35,6 +35,7 @@ type Questioner struct {
 	QuestionerRepo IQuestionerRepo
 	LogProcess     utils.IJobQueueLog
 	processName    string
+	errQueue       error
 	excel          *excelize.File
 	delivery       rmq.Delivery
 	logPayload     *utils.LogInfo
@@ -210,11 +211,18 @@ func (q *Questioner) setHeader(payload dto.PayloadQuestioner, wg *sync.WaitGroup
 }
 
 func (q *Questioner) error(err error) {
+	q.LogProcess.UpdateJobQueueLog(utils.LogInfo{
+		ProcessStatus: utils.FAILED,
+		ProcessResult: err.Error(),
+	})
 	utils.Error(q.processName, err)
+
 	errReject := q.delivery.Reject()
 	if errReject != nil {
 		utils.Error(q.processName, "Error rejecting queue", errReject)
 	}
+
+	q.errQueue = err
 
 	defer utils.Info(q.processName, "Job Aborted")
 }
@@ -223,10 +231,15 @@ func (q *Questioner) isQuestionAndTemplateEmpty(questions []entity.GetQuestion, 
 	return len(questions) < 1 && len(templates) < 1
 }
 
-func (q *Questioner) setFilePath(outputLoc, processName string) {
-	fileName := utils.FileNameFormat(outputLoc, processName)
-	q.excel.Path = fileName
+func (q *Questioner) setFilePath(outputLoc, fileName string) (string, string) {
+	filePath, fileName := utils.FormatFilePath(outputLoc, fileName)
+
+	utils.Debug(q.processName, filePath)
+
+	q.excel.Path = filePath
 	q.excel.DeleteSheet("Sheet1")
+
+	return filePath, fileName
 }
 
 func (q *Questioner) setBody(payload dto.PayloadQuestioner, wg *sync.WaitGroup) {
@@ -285,6 +298,16 @@ func (q *Questioner) Consume(delivery rmq.Delivery) {
 		q.error(errParsePayload)
 	}
 
+	q.LogProcess.CreateJobQueueLog(utils.LogInfo{
+		ProcessName:    q.processName,
+		ProcessPayload: delivery.Payload(),
+		ProcessStatus:  utils.PROCESSING,
+		ProcessType:    utils.REPORT,
+		ProcessResult:  "",
+		IssuedBy:       payload.UserId,
+	})
+	utils.Info(q.processName, "Receiving payload : ", delivery.Payload())
+
 	var wg sync.WaitGroup
 
 	wg.Add(2)
@@ -299,12 +322,18 @@ func (q *Questioner) Consume(delivery rmq.Delivery) {
 		q.error(errGetDetail)
 	}
 
-	q.setFilePath(q.Config.Report.OutputLocation, fmt.Sprintf("%s(%s)", q.processName, project.Code))
+	filePath, fileName := q.setFilePath(q.Config.Report.OutputLocation, fmt.Sprintf("%s(%s)", q.processName, project.Code))
 
-	if errSave := q.excel.Save(); errSave != nil {
-		q.error(errSave)
+	if q.errQueue == nil {
+		if errSave := q.excel.Save(); errSave != nil {
+			q.error(errSave)
+		}
+		delivery.Ack()
+		q.LogProcess.UpdateJobQueueLog(utils.LogInfo{
+			ProcessName:   fileName,
+			ProcessStatus: utils.SUCCESS,
+			ProcessResult: filePath,
+		})
+		utils.Info(q.processName, "Job successfully executed on Worker", q.WorkerIndex)
 	}
-
-	utils.Info(q.processName, "Job successfully executed on Worker", q.WorkerIndex)
-	delivery.Ack()
 }
