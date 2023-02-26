@@ -49,7 +49,7 @@ func main() {
 	errChan := make(chan error)
 
 	go logErrors(errChan)
-	conn, errConnection := rmq.OpenConnectionWithRedisClient("assessment consumer job", consumer.ConnectRedis(), errChan)
+	conn, errConnection := rmq.OpenConnectionWithRedisClient("assessment consumer job", consumer.ConnectRedis(cfg.Redis), errChan)
 	if errConnection != nil {
 		utils.Error(utils.DATABASE, errConnection)
 		os.Exit(1)

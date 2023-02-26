@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"assessment/configs"
 	"assessment/pkg/utils"
 	"context"
 	"fmt"
@@ -16,17 +17,17 @@ func ErrConnectRedis() {
 	}
 }
 
-func ConnectRedis() *redis.Client {
+func ConnectRedis(cfg configs.RedisConfig) *redis.Client {
 	defer ErrConnectRedis()
 
 	var rdb *redis.Client
 
 	opts, err := redis.ParseURL(fmt.Sprintf("redis://%s:%s@%s:%d/%d",
-		"sinotif",
-		"SinotifDev",
-		"localhost",
-		6379,
-		1,
+		cfg.RedisUsername,
+		cfg.RedisPassword,
+		cfg.RedisHost,
+		cfg.RedisPort,
+		cfg.RedisDatabase,
 	))
 
 	if err != nil {
