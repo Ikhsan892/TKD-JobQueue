@@ -10,6 +10,10 @@ func FormatFilePath(outputLocation, fileName string) (string, string) {
 	return formatFilePath(outputLocation, fileName, "xlsx")
 }
 
+func FormatFilePathFormat(outputLocation, fileName, format string) (string, string) {
+	return formatFilePath(outputLocation, fileName, format)
+}
+
 func formatFileName(prefix, format string) string {
 	rand.Seed(time.Now().UTC().UnixNano())
 	randomInt := rand.Int()

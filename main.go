@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	prefetchLimit = 1000
+	prefetchLimit = 100
 	pollDuration  = 100 * time.Millisecond
 	numConsumers  = 5
 
@@ -25,19 +25,19 @@ const (
 
 func logErrors(errChan <-chan error) {
 	for err := range errChan {
-		switch err := err.(type) {
+		switch errT := err.(type) {
 		case *rmq.HeartbeatError:
-			if err.Count == rmq.HeartbeatErrorLimit {
-				log.Print("heartbeat error (limit): ", err)
+			if errT.Count == rmq.HeartbeatErrorLimit {
+				log.Print("heartbeat error (limit): ", errT)
 			} else {
-				log.Print("heartbeat error: ", err)
+				log.Print("heartbeat error: ", errT)
 			}
 		case *rmq.ConsumeError:
-			log.Print("consume error: ", err)
+			log.Print("consume error: ", errT)
 		case *rmq.DeliveryError:
-			log.Print("delivery error: ", err.Delivery, err)
+			log.Print("delivery error: ", errT.Delivery, err)
 		default:
-			log.Print("other error: ", err)
+			log.Print("other error: ", errT)
 		}
 	}
 }
@@ -49,20 +49,18 @@ func main() {
 	errChan := make(chan error)
 
 	go logErrors(errChan)
-	conn, errConnection := rmq.OpenConnectionWithRedisClient("assessment consumer job", consumer.ConnectRedis(cfg.Redis), errChan)
+	conn, errConnection := rmq.OpenConnectionWithRedisClient("assessment job queues", consumer.ConnectRedis(cfg.Redis), errChan)
 	if errConnection != nil {
 		utils.Error(utils.DATABASE, errConnection)
 		os.Exit(1)
 	}
 
 	// register new queue
-	queue, errQueue := conn.OpenQueue("test")
-	questioner, errQuestioner := conn.OpenQueue("report_questioner")
-	if errQuestioner != nil {
-		panic(errQuestioner)
-	}
-	if errQueue != nil {
-		panic(errQueue)
+	queue, err := conn.OpenQueue("test")
+	questioner, err := conn.OpenQueue("report_questioner")
+	volumeAttachment, err := conn.OpenQueue("volume_attachment")
+	if err != nil {
+		panic(err)
 	}
 
 	// start consuming
@@ -72,15 +70,20 @@ func main() {
 	if errConsumingQuestioner := questioner.StartConsuming(prefetchLimit, pollDuration); errConsumingQuestioner != nil {
 		panic(errConsumingQuestioner)
 	}
+	if errConsumingVolume := volumeAttachment.StartConsuming(prefetchLimit, pollDuration); errConsumingVolume != nil {
+		panic(errConsumingVolume)
+	}
 
 	// assign handlers
 	go handlers.HandlerTest(queue)
 	go handlers.HandlerQuestioner(questioner, db, cfg)
+	go handlers.HandlerVolumeAttachment(volumeAttachment, db, cfg)
 
 	sigQuit := make(chan os.Signal, 1)
 	signal.Notify(sigQuit, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	<-sigQuit
 
 	utils.Info(utils.DATABASE, "Closing Connection")
+
 	<-conn.StopAllConsuming()
 }
