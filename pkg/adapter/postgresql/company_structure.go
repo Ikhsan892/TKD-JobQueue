@@ -7,6 +7,7 @@ import (
 
 type ICompanyStructureRepo interface {
 	GetById(structureId string) (entity.CompanyStructure, error)
+	GetByProject(projectId uint) []entity.CompanyStructure
 }
 
 type CompanyStructurePostgresAdapter struct {
@@ -17,6 +18,16 @@ func NewCompanyStructureAdapter(db *gorm.DB) *CompanyStructurePostgresAdapter {
 	return &CompanyStructurePostgresAdapter{
 		db: db,
 	}
+}
+
+func (p *CompanyStructurePostgresAdapter) GetByProject(projectId uint) []entity.CompanyStructure {
+	var result []entity.CompanyStructure
+
+	if err := p.db.Table("project_company_structures").Where("project_id = ?", projectId).Find(&result).Error; err != nil {
+		return []entity.CompanyStructure{}
+	}
+
+	return result
 }
 
 func (p *CompanyStructurePostgresAdapter) GetById(structureId string) (entity.CompanyStructure, error) {

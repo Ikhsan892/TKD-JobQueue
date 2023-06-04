@@ -15,6 +15,8 @@ type GetVolume struct {
 	ProjectId                    uint    `json:"project_id" gorm:"not null"`
 	StructureId                  string  `json:"structure_id" gorm:"not null"`
 	StorageFacilityId            uint    `json:"storage_facility_id" gorm:"not null"`
+	StorageFacilityName          string  `json:"storage_facility_name"`
+	FilledByName                 string  `json:"filled_by_name"`
 	Unit                         float64 `json:"unit" gorm:"not null"`
 	Shelf                        float64 `json:"shelf" gorm:"not null"`
 	ShelfLong                    float64 `json:"shelf_long" gorm:"not null"`
@@ -22,4 +24,10 @@ type GetVolume struct {
 	VolumeStorageMediaPercentage float64 `json:"volume_storage_media_percentage" gorm:"not null"`
 	VolumeStorageMedia           float32 `json:"volume_storage_media" gorm:"not null"`
 	FilledBy                     uint    `json:"filled_by" gorm:"not null"`
+}
+
+type VolumeStats struct {
+	Type                string  `json:"type"`
+	TotalFacilityVolume float64 `json:"total_facility_volume"`
+	TotalMediaVolume    float64 `json:"total_media_volume"`
 }

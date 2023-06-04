@@ -26,7 +26,9 @@ type RowValue struct {
 	Row          int
 	TemplateName string
 	Value        string
+	MergeCell    string
 	Next         func(*excelize.File, string)
+	ColName      string
 }
 
 type Questioner struct {

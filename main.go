@@ -23,6 +23,15 @@ const (
 	shouldLog       = true
 )
 
+func ConsumingQueues(queues ...rmq.Queue) error {
+	for _, queue := range queues {
+		if err := queue.StartConsuming(prefetchLimit, pollDuration); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func logErrors(errChan <-chan error) {
 	for err := range errChan {
 		switch errT := err.(type) {
@@ -57,6 +66,7 @@ func main() {
 
 	// register new queue
 	queue, err := conn.OpenQueue("test")
+	volume, err := conn.OpenQueue("volume")
 	questioner, err := conn.OpenQueue("report_questioner")
 	volumeAttachment, err := conn.OpenQueue("volume_attachment")
 	if err != nil {
@@ -64,20 +74,15 @@ func main() {
 	}
 
 	// start consuming
-	if errConsuming := queue.StartConsuming(prefetchLimit, pollDuration); errConsuming != nil {
+	if errConsuming := ConsumingQueues(queue, questioner, volumeAttachment, volume); errConsuming != nil {
 		panic(errConsuming)
-	}
-	if errConsumingQuestioner := questioner.StartConsuming(prefetchLimit, pollDuration); errConsumingQuestioner != nil {
-		panic(errConsumingQuestioner)
-	}
-	if errConsumingVolume := volumeAttachment.StartConsuming(prefetchLimit, pollDuration); errConsumingVolume != nil {
-		panic(errConsumingVolume)
 	}
 
 	// assign handlers
 	go handlers.HandlerTest(queue)
 	go handlers.HandlerQuestioner(questioner, db, cfg)
 	go handlers.HandlerVolumeAttachment(volumeAttachment, db, cfg)
+	go handlers.HandlerVolume(volume, db, cfg)
 
 	sigQuit := make(chan os.Signal, 1)
 	signal.Notify(sigQuit, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
