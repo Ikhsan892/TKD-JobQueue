@@ -1,10 +1,13 @@
 package utils
 
-func GetAutoWidth(value string) int {
+func GetAutoWidth(value interface{}) int {
 	oneChar := 3
 	gap := 2
 	max := 176
-	width := (len([]rune(value)) * oneChar) + gap
+	width := 25
+	if _, ok := value.(string); ok {
+		width = (len([]rune(value.(string))) * oneChar) + gap
+	}
 
 	if width > max {
 		return max
