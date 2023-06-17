@@ -25,7 +25,7 @@ type RowValue struct {
 	Index        int
 	Row          int
 	TemplateName string
-	Value        string
+	Value        interface{}
 	MergeCell    string
 	Next         func(*excelize.File, string)
 	ColName      string
