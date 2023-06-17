@@ -168,7 +168,7 @@ func (v *VolumeReport) setHeader(payload dto.ReportVolume, wg *sync.WaitGroup) {
 
 		utils.Debug(v.processName, "template : ", template.Name)
 
-		headers := []string{"ID", "Sarana/Media Simpan", "Unit", "Shelf", "Panjang Shelf", "Volume Sarana Simpan (M)", "Volume Media Simpan (%)", "Volume Media Simpan (M)", "Diisi Oleh"}
+		headers := []string{"ID", "Sarana/Media Simpan", "Unit", "Shelf", "Panjang Shelf", "Volume Sarana Simpan (M)", "Estimasi Volume Media Simpan (%)", "Volume Media Simpan (M)", "Diisi Oleh"}
 
 		for index, header := range headers {
 			err := v.setValue(RowValue{
@@ -208,11 +208,11 @@ func (v *VolumeReport) setFilePath(outputLoc, fileName string) (string, string) 
 func (v *VolumeReport) setBody(payload dto.ReportVolume, wg *sync.WaitGroup) {
 	var (
 		volumeRepo  = v.VolumeRepo
-		values      [][]string
-		statValues  [][]string
-		rows        []string
-		statRows    []string
-		statsHeader = []string{"Sarana Simpan", "Total Sarana Simpan (M)", "Total Volume Media Simpan (M)"}
+		values      [][]interface{}
+		statValues  [][]interface{}
+		rows        []interface{}
+		statRows    []interface{}
+		statsHeader = []string{"Sarana Simpan", "Total Sarana Simpan (M)", "Total Volume Media Simpan (M)", "Total Estimasi Volume Media Simpan (%)"}
 	)
 
 	v.mapTemplate(payload.ProjectId, payload.StructureId, func(template entity.CompanyStructure, templateName string) {
@@ -225,33 +225,44 @@ func (v *VolumeReport) setBody(payload dto.ReportVolume, wg *sync.WaitGroup) {
 				rows = append(rows, volume.StorageFacilityName)
 				rows = append(rows, strconv.Itoa(int(volume.Unit)))
 				rows = append(rows, strconv.Itoa(int(volume.Shelf)))
-				rows = append(rows, fmt.Sprintf("%.2f M", float64(volume.ShelfLong)))
-				rows = append(rows, fmt.Sprintf("%.2f M", float64(volume.VolumeStorageFacility)))
+				rows = append(rows, volume.ShelfLong)
+				rows = append(rows, volume.VolumeStorageFacility)
 				rows = append(rows, fmt.Sprintf("%.2f %%", float64(volume.VolumeStorageMediaPercentage)))
-				rows = append(rows, fmt.Sprintf("%.2f M", float64(volume.VolumeStorageMedia)))
+				rows = append(rows, float64(volume.VolumeStorageMedia))
 				rows = append(rows, volume.FilledByName)
 
 				values = append(values, rows)
 
-				rows = []string{}
+				rows = []interface{}{}
 			}
 			totalFacility := 0.00
 			totalMedia := 0.00
+			totalEstimationVolumePercentage := 0.00
 			for _, stat := range volumeStats {
 				statRows = append(statRows, stat.Type)
-				statRows = append(statRows, fmt.Sprintf("%.2f M", float64(stat.TotalFacilityVolume)))
-				statRows = append(statRows, fmt.Sprintf("%.2f M", float64(stat.TotalMediaVolume)))
+				statRows = append(statRows, stat.TotalFacilityVolume)
+				statRows = append(statRows, stat.TotalMediaVolume)
+
+				if stat.TotalFacilityVolume > 0 {
+					statRows = append(statRows, fmt.Sprintf("%.2f %%", stat.TotalMediaVolume/stat.TotalFacilityVolume*100))
+				} else {
+					statRows = append(statRows, fmt.Sprintf("%d %%", 0))
+				}
 
 				totalFacility += float64(stat.TotalFacilityVolume)
 				totalMedia += float64(stat.TotalMediaVolume)
 				statValues = append(statValues, statRows)
 
-				statRows = []string{}
+				statRows = []interface{}{}
+			}
+			if totalFacility > 0 {
+				totalEstimationVolumePercentage = totalMedia / totalFacility * 100
 			}
 
 			statRows = append(statRows, "Grand Total")
-			statRows = append(statRows, fmt.Sprintf("%.2f", float64(totalFacility)))
-			statRows = append(statRows, fmt.Sprintf("%.2f", float64(totalMedia)))
+			statRows = append(statRows, totalFacility)
+			statRows = append(statRows, totalMedia)
+			statRows = append(statRows, fmt.Sprintf("%.2f %%", totalEstimationVolumePercentage))
 			statValues = append(statValues, statRows)
 
 			for row, value := range values {
@@ -309,12 +320,12 @@ func (v *VolumeReport) setBody(payload dto.ReportVolume, wg *sync.WaitGroup) {
 					}
 				}
 			}
-			statRows = []string{}
+			statRows = []interface{}{}
 
 		}
 
-		values = [][]string{}
-		statValues = [][]string{}
+		values = [][]interface{}{}
+		statValues = [][]interface{}{}
 
 	})
 
