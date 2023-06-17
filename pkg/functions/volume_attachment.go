@@ -77,6 +77,7 @@ func (v *Volume) Consume(delivery rmq.Delivery) {
 
 	if payload.VolumeId != nil {
 		volume, err = v.VolumeRepo.GetById(*payload.VolumeId)
+		structure, err = v.StructureRepo.GetById(volume.StructureId)
 		if err != nil {
 			v.error(err)
 		}
@@ -88,7 +89,7 @@ func (v *Volume) Consume(delivery rmq.Delivery) {
 			attachmentPath = attachments[0].Path
 		}
 
-		filePath, fileName = utils.FormatFilePathFormat(v.Config.Report.OutputLocation, "("+strconv.Itoa(int(volume.Id))+")"+volume.StructureId, "zip")
+		filePath, fileName = utils.FormatFilePathFormat(v.Config.Report.OutputLocation, "("+strconv.Itoa(int(volume.Id))+")"+structure.Name, "zip")
 	} else {
 		project, err = v.ProjectRepo.GetById(payload.ProjectId)
 		if err != nil {
