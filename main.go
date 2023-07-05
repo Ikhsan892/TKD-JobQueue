@@ -67,6 +67,7 @@ func main() {
 	// register new queue
 	queue, err := conn.OpenQueue("test")
 	volume, err := conn.OpenQueue("volume")
+	inventory, err := conn.OpenQueue("inventory")
 	questioner, err := conn.OpenQueue("report_questioner")
 	volumeAttachment, err := conn.OpenQueue("volume_attachment")
 	if err != nil {
@@ -74,13 +75,14 @@ func main() {
 	}
 
 	// start consuming
-	if errConsuming := ConsumingQueues(queue, questioner, volumeAttachment, volume); errConsuming != nil {
+	if errConsuming := ConsumingQueues(queue, questioner, volumeAttachment, volume, inventory); errConsuming != nil {
 		panic(errConsuming)
 	}
 
 	// assign handlers
 	go handlers.HandlerTest(queue)
 	go handlers.HandlerQuestioner(questioner, db, cfg)
+	go handlers.HandlerInventory(inventory, db, cfg)
 	go handlers.HandlerVolumeAttachment(volumeAttachment, db, cfg)
 	go handlers.HandlerVolume(volume, db, cfg)
 

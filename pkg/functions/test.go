@@ -18,7 +18,7 @@ func NewTest(workerIndex int) *Test {
 func (t *Test) Consume(delivery rmq.Delivery) {
 	payload := delivery.Payload()
 
-	fmt.Println(fmt.Sprintf("execute worker test index %d with payload %s", t.workerIndex, payload))
+	fmt.Println(fmt.Sprintf("execute worker inventory index %d with payload %s", t.workerIndex, payload))
 	if err := delivery.Ack(); err != nil {
 		panic(err)
 	}
