@@ -19,7 +19,7 @@ func HandlerInventory(queue rmq.Queue, db *gorm.DB, cfg *configs.Config) {
 			Config:        cfg,
 			ProjectRepo:   postgresql.NewProjectAdapter(db),
 			StructureRepo: postgresql.NewCompanyStructureAdapter(db),
-			InventoryRepo: postgresql.NewQuestionerAdapter(db),
+			InventoryRepo: postgresql.NewInventoryAdapter(db),
 			LogProcess:    utils.NewJobQueueLog(db),
 		})); err != nil {
 			panic(err)

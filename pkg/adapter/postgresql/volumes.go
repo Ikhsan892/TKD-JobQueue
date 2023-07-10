@@ -8,8 +8,8 @@ import (
 type IVolumeRepo interface {
 	GetAttachmentsByVolumeId(volumeId uint) []entity.GetVolumeAttachment
 	GetById(volumeId uint) (entity.GetVolume, error)
-	GetByStructureId(structureId string) []entity.GetVolume
-	GetVolumeStats(structureId string) []entity.VolumeStats
+	GetByStructureId(structureId string, projectId uint) []entity.GetVolume
+	GetVolumeStats(structureId string, projectId uint) []entity.VolumeStats
 }
 
 type VolumePostgresAdapter struct {
@@ -40,11 +40,12 @@ func (volume *VolumePostgresAdapter) GetAttachmentsByVolumeId(volumeId uint) []e
 	return result
 }
 
-func (volume *VolumePostgresAdapter) GetByStructureId(structureId string) []entity.GetVolume {
+func (volume *VolumePostgresAdapter) GetByStructureId(structureId string, projectId uint) []entity.GetVolume {
 	var result []entity.GetVolume
 
 	volume.db.Table("volumes").
 		Where("structure_id = ?", structureId).
+		Where("project_id = ?", projectId).
 		Joins("inner join users on users.id = volumes.filled_by").
 		Joins("inner join storage_facilities on storage_facilities.id = volumes.storage_facility_id").
 		Select("volumes.*,users.full_name as filled_by_name,storage_facilities.name as storage_facility_name").
@@ -53,11 +54,12 @@ func (volume *VolumePostgresAdapter) GetByStructureId(structureId string) []enti
 	return result
 }
 
-func (volume *VolumePostgresAdapter) GetVolumeStats(structureId string) []entity.VolumeStats {
+func (volume *VolumePostgresAdapter) GetVolumeStats(structureId string, projectId uint) []entity.VolumeStats {
 	var result []entity.VolumeStats
 
 	volume.db.Table("volumes").
 		Where("structure_id = ?", structureId).
+		Where("project_id = ?", projectId).
 		Joins("inner join storage_facilities on storage_facilities.id = volumes.storage_facility_id").
 		Select(`
 				storage_facilities.name as type, 

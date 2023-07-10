@@ -6,3 +6,7 @@ type PayloadVolume struct {
 	ProjectId uint    `json:"project_id"`
 	UnitKerja *string `json:"unit_kerja"`
 }
+
+type PayloadInventory struct {
+	PayloadVolume
+}

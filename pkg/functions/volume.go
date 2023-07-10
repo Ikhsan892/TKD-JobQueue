@@ -216,8 +216,8 @@ func (v *VolumeReport) setBody(payload dto.ReportVolume, wg *sync.WaitGroup) {
 	)
 
 	v.mapTemplate(payload.ProjectId, payload.StructureId, func(template entity.CompanyStructure, templateName string) {
-		volumes := volumeRepo.GetByStructureId(template.UUID)
-		volumeStats := volumeRepo.GetVolumeStats(template.UUID)
+		volumes := volumeRepo.GetByStructureId(template.UUID, payload.ProjectId)
+		volumeStats := volumeRepo.GetVolumeStats(template.UUID, payload.ProjectId)
 
 		if len(volumes) > 0 {
 			for _, volume := range volumes {

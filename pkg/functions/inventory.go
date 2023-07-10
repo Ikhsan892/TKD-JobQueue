@@ -15,6 +15,7 @@ import (
 )
 
 type IInventoryRepo interface {
+	GetAllData(structureId string, projectId uint) []dto.ReportInventoryResponse
 }
 
 type Inventory struct {
@@ -166,12 +167,24 @@ func (i *Inventory) baseStyle(templateName, column, color string, bold bool) {
 	i.excel.SetCellStyle(templateName, column, column, colHeaderStyle)
 }
 
-func (i *Inventory) setHeader(payload dto.ReportVolume, wg *sync.WaitGroup) {
+func (i *Inventory) setHeader(payload dto.ReportInventory, wg *sync.WaitGroup) {
 	i.mapTemplate(payload.ProjectId, payload.StructureId, func(template entity.CompanyStructure, templateName string) {
 
 		utils.Debug(i.processName, "template : ", template.Name)
 
-		headers := []string{"ID", "Sarana/Media Simpan", "Unit", "Shelf", "Panjang Shelf", "Volume Sarana Simpan (M)", "Estimasi Volume Media Simpan (%)", "Volume Media Simpan (M)", "Diisi Oleh"}
+		headers := []string{
+			"Kode Klasifikasi",
+			"Judul Arsip/File",
+			"Frekuensi Penambahan/Perubahan Dokumen",
+			"Tahun Arsip",
+			"Media Simpan",
+			"Sarana Simpan",
+			"Isi/Jenis Dokumen Sesuai Urutan Proses",
+			"Bentuk Dokumen",
+			"Ukuran Fisik Dimensi Arsip",
+			"Tingkat Keaslian",
+			"Diisi Oleh",
+		}
 
 		for index, header := range headers {
 			err := i.setValue(RowValue{
@@ -208,15 +221,51 @@ func (i *Inventory) setFilePath(outputLoc, fileName string) (string, string) {
 	return filePath, fileName
 }
 
-func (i *Inventory) setBody(payload dto.ReportVolume, wg *sync.WaitGroup) {
+func (i *Inventory) setBody(payload dto.ReportInventory, wg *sync.WaitGroup) {
 	var (
-	//volumeRepo  = i.InventoryRepo
-	//values      [][]interface{}
-	//rows        []interface{}
+		inventoryRepo = i.InventoryRepo
+		values        [][]interface{}
+		rows          []interface{}
 	)
 
 	i.mapTemplate(payload.ProjectId, payload.StructureId, func(template entity.CompanyStructure, templateName string) {
-		//values = [][]interface{}{}
+		inventories := inventoryRepo.GetAllData(template.UUID, payload.ProjectId)
+
+		for _, inventory := range inventories {
+			rows = append(rows, inventory.KodeKlasifikasi)
+			rows = append(rows, inventory.JudulArsip)
+			rows = append(rows, inventory.FrekuensiPenambahan)
+			rows = append(rows, fmt.Sprintf("%s - %s", inventory.TahunDari, inventory.TahunSampai))
+			rows = append(rows, inventory.MediaSimpan)
+			rows = append(rows, inventory.SaranaSimpan)
+			rows = append(rows, inventory.IsiJenisDokumen)
+			rows = append(rows, inventory.BentukDokumen)
+			rows = append(rows, inventory.UkuranFisikDimensiArsip)
+			rows = append(rows, inventory.TingkatKeaslian)
+			rows = append(rows, inventory.DiisiOleh)
+
+			values = append(values, rows)
+			rows = []interface{}{}
+		}
+
+		for row, value := range values {
+			for v, s := range value {
+				err := i.setValue(RowValue{
+					Index:        v,
+					Row:          row + bodyStartRow,
+					TemplateName: templateName,
+					Value:        s,
+					Next: func(excel *excelize.File, currentColumn string) {
+						i.baseStyle(templateName, currentColumn, "ffffff", false)
+					},
+				})
+				if err != nil {
+					break
+				}
+			}
+		}
+
+		values = [][]interface{}{}
 	})
 
 	wg.Done()
@@ -225,7 +274,49 @@ func (i *Inventory) setBody(payload dto.ReportVolume, wg *sync.WaitGroup) {
 func (i *Inventory) Consume(delivery rmq.Delivery) {
 	payload := delivery.Payload()
 
-	if err := delivery.Ack(); err != nil {
-		panic(err)
+	parsePayload, errParsePayload := utils.ParsePayload[dto.ReportInventory](i.processName, payload)
+	if errParsePayload != nil {
+		i.error(errParsePayload)
+	}
+
+	i.delivery = delivery
+	utils.Info(i.processName, fmt.Sprintf("Executing Job %s on Worker %d...", "Inventory Report", i.WorkerIndex))
+
+	i.LogProcess.CreateJobQueueLog(utils.LogInfo{
+		ProcessName:    i.processName,
+		ProcessPayload: delivery.Payload(),
+		ProcessStatus:  utils.PROCESSING,
+		ProcessType:    utils.FILE,
+		ProcessResult:  "",
+		IssuedBy:       parsePayload.UserId,
+	})
+
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go i.setHeader(parsePayload, &wg)
+	go i.setBody(parsePayload, &wg)
+
+	wg.Wait()
+
+	project, errGetDetail := i.ProjectRepo.GetById(parsePayload.ProjectId)
+	if errGetDetail != nil {
+		i.error(errGetDetail)
+	}
+
+	filePath, fileName := i.setFilePath(i.Config.Report.OutputLocation, fmt.Sprintf("%s(%s)", i.processName, project.Code))
+
+	if i.errQueue == nil {
+		if errSave := i.excel.Save(); errSave != nil {
+			i.error(errSave)
+		}
+		delivery.Ack()
+		i.LogProcess.UpdateJobQueueLog(utils.LogInfo{
+			ProcessName:   fileName,
+			ProcessStatus: utils.SUCCESS,
+			ProcessResult: filePath,
+		})
+		utils.Info(i.processName, "Job successfully executed on Worker", i.WorkerIndex)
 	}
 }
